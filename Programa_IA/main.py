@@ -1,4 +1,3 @@
-# main.py
 from avaliador_texto import AvaliadorTexto
 from interface_grafica import InterfaceGrafica
 
