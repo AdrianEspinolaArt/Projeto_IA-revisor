@@ -6,7 +6,7 @@ from transformers import GPT2LMHeadModel, GPT2Tokenizer
 class AvaliadorTexto:
     def __init__(self, perfil):
         self.perfil = perfil
-        self.nlp = spacy.load('pt_core_news_sm')
+        self.nlp = spacy.load('pt_core_news_lg')
         self.spell = SpellChecker(language='pt')
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
