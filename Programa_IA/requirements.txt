@@ -2,3 +2,5 @@ docx
 spacy
 spellchecker
 transformers
+indexer
+torch
