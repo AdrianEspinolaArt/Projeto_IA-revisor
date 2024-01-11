@@ -1,16 +1,24 @@
 from docx import Document
 import spacy
-from spellchecker import SpellChecker
+import enchant  # Importe a biblioteca pyenchant
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 class AvaliadorTexto:
     def __init__(self, perfil):
         self.perfil = perfil
         self.nlp = spacy.load('pt_core_news_lg')
-        self.spell = SpellChecker(language='pt')
+        self.spell = enchant.Dict("pt_BR")  # Use enchant em vez de spellchecker
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+# Configurar PyEnchant com dicionários do LibreOffice para pt-BR
+        self.configurar_pyenchant()
 
+    def configurar_pyenchant(self):
+        # Substitua 'caminho/para/seu/diretorio' pelo caminho real para o diretório contendo os arquivos .dic e .aff
+        caminho_dicionario = 'caminho/para/seu/diretorio'
+        self.spell.provider.set_param("dictionary", f"{caminho_dicionario}/pt_BR.dic")
+        self.spell.provider.set_param("affix", f"{caminho_dicionario}/pt_BR.aff")
+        
     def avaliar_formatacao(self, doc):
         pontuacao = 0.5  # Pontuação inicial
 
@@ -67,7 +75,7 @@ class AvaliadorTexto:
         if any(giria in texto_completo for giria in girias):
             pontuacao -= 0.2
 
-        erros_ortografia = len(self.spell.unknown(texto_completo.split()))
+        erros_ortografia = sum(not self.spell.check(palavra) for palavra in texto_completo.split())
 
         if erros_ortografia > 10:
             pontuacao -= 0.2
@@ -148,9 +156,3 @@ class AvaliadorTexto:
         pontuacao_total = pontuacao_formatacao + pontuacao_linhas + pontuacao_citacoes + pontuacao_lingua + pontuacao_adequacao
 
         return pontuacao_total
-
-# Exemplo de uso:
-avaliador = AvaliadorTexto(perfil="resenha")
-caminho_do_arquivo = "caminho/do/seu/arquivo.docx"
-pontuacao_final = avaliador.avaliar_texto(caminho_do_arquivo)
-print(f"Pontuação final do texto: {pontuacao_final}")
