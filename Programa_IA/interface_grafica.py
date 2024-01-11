@@ -32,10 +32,9 @@ class InterfaceGrafica(tk.Tk):
 
             # Aqui você pode usar a escolha do perfil para criar uma instância específica do AvaliadorTexto
             perfil_selecionado = self.perfil_var.get()
-            avaliador = AvaliadorTexto(perfil_selecionado)
 
             # Avaliar o texto e obter a pontuação final
-            pontuacao_final = avaliador.avaliar_texto(caminho_arquivo)
+            pontuacao_final = self.avaliador.avaliar_texto(caminho_arquivo)
 
             # Exibir a pontuação final
             self.mostrar_mensagem(f"Pontuação final do texto: {pontuacao_final}")
@@ -45,9 +44,8 @@ class InterfaceGrafica(tk.Tk):
         mensagem_label.pack()
 
 if __name__ == "__main__":
-    # Executar a interface
-    interface = InterfaceGrafica(avaliador=None)  # Avaliador será passado quando criamos a interface no main.py
+    perfil_padrao = "Resenha"  # Defina o perfil desejado aqui
+    avaliador = AvaliadorTexto(perfil=perfil_padrao)
+    interface = InterfaceGrafica(avaliador)
     interface.mainloop()
 
-    # Adicione uma pausa para que o console não seja fechado imediatamente
-    input("Pressione Enter para sair...")
