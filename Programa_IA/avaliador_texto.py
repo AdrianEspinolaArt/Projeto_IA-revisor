@@ -1,23 +1,16 @@
 from docx import Document
 import spacy
-import enchant  # Importe a biblioteca pyenchant
+from autocorrect import Speller  # Substituí SpellChecker pelo Speller
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 
 class AvaliadorTexto:
     def __init__(self, perfil):
         self.perfil = perfil
         self.nlp = spacy.load('pt_core_news_lg')
-        self.spell = enchant.Dict("pt_BR")  # Use enchant em vez de spellchecker
+        self.spell = Speller(lang='pt')  # Use o Speller da biblioteca autocorrect
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-# Configurar PyEnchant com dicionários do LibreOffice para pt-BR
-        self.configurar_pyenchant()
 
-    def configurar_pyenchant(self):
-    # Configure o PyEnchant para usar os arquivos .dic e .aff no mesmo diretório do script
-        self.spell = enchant.DictWithPWL("pt_BR", "pt_BR.dic", "pt_BR.aff")
-
-        
     def avaliar_formatacao(self, doc):
         pontuacao = 0.5  # Pontuação inicial
 
@@ -74,7 +67,7 @@ class AvaliadorTexto:
         if any(giria in texto_completo for giria in girias):
             pontuacao -= 0.2
 
-        erros_ortografia = sum(not self.spell.check(palavra) for palavra in texto_completo.split())
+        erros_ortografia = len(self.spell.unknown(texto_completo.split()))
 
         if erros_ortografia > 10:
             pontuacao -= 0.2
