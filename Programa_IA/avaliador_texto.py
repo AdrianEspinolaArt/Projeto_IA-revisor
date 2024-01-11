@@ -15,10 +15,7 @@ class AvaliadorTexto:
 
     def configurar_pyenchant(self):
     # Configure o PyEnchant para usar os arquivos .dic e .aff no mesmo diretório do script
-    self.spell = enchant.DictWithPWL("pt_BR", "pt_BR.dic", "pt_BR.aff")
-
-# Certifique-se de substituir 'seu_arquivo.dic' e 'seu_arquivo.aff' pelos nomes reais dos seus arquivos.
-
+        self.spell = enchant.DictWithPWL("pt_BR", "pt_BR.dic", "pt_BR.aff")
 
         
     def avaliar_formatacao(self, doc):
