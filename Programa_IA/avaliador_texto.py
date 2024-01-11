@@ -14,10 +14,12 @@ class AvaliadorTexto:
         self.configurar_pyenchant()
 
     def configurar_pyenchant(self):
-        # Substitua 'caminho/para/seu/diretorio' pelo caminho real para o diretório contendo os arquivos .dic e .aff
-        caminho_dicionario = 'caminho/para/seu/diretorio'
-        self.spell.provider.set_param("dictionary", f"{caminho_dicionario}/pt_BR.dic")
-        self.spell.provider.set_param("affix", f"{caminho_dicionario}/pt_BR.aff")
+    # Configure o PyEnchant para usar os arquivos .dic e .aff no mesmo diretório do script
+    self.spell = enchant.DictWithPWL("pt_BR", "pt_BR.dic", "pt_BR.aff")
+
+# Certifique-se de substituir 'seu_arquivo.dic' e 'seu_arquivo.aff' pelos nomes reais dos seus arquivos.
+
+
         
     def avaliar_formatacao(self, doc):
         pontuacao = 0.5  # Pontuação inicial
