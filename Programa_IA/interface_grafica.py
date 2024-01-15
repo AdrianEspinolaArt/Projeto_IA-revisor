@@ -11,6 +11,15 @@ class InterfaceGrafica(tk.Tk):
         self.geometry("800x600")  # Ajustei o tamanho do aplicativo
         self.configure(bg="#F0F0F0")  # Cor de fundo
 
+        # Mapeamento entre nomes internos e nomes desejados
+        self.mapeamento_nomes = {
+            'Formatacao': 'Formatação',
+            'Linhas': 'Linhas',
+            'Citacoes': 'Citações',
+            'Lingua_Portuguesa': 'Língua Portuguesa',
+            'Adequacao': 'Adequação'
+        }
+
         # Variável para armazenar o perfil selecionado
         self.var_perfil = tk.StringVar(self)
         self.var_perfil.set("Resenha")  # Perfil padrão
@@ -25,16 +34,16 @@ class InterfaceGrafica(tk.Tk):
         # Botão para selecionar o arquivo
         self.btn_selecionar_arquivo = tk.Button(self, text="Selecionar Arquivo", command=self.selecionar_arquivo,
                                                 font=("Helvetica", 12), bg="#4CAF50", fg="white")
-        self.btn_selecionar_arquivo.grid(row=1, column=0, columnspan=2, pady=10)
+        self.btn_selecionar_arquivo.grid(row=1, column=0, pady=5, padx=(15, 5), sticky="w")  # Ajuste na opção padx
 
         # Botão de iniciar
         self.btn_iniciar = tk.Button(self, text="Iniciar Avaliação", command=self.iniciar_avaliacao,
-                                     font=("Helvetica", 12), bg="#008CBA", fg="white")
-        self.btn_iniciar.grid(row=2, column=0, columnspan=2, pady=10)
+                                    font=("Helvetica", 12), bg="#008CBA", fg="white")
+        self.btn_iniciar.grid(row=1, column=0, pady=5, padx=(5, 15), sticky="e")  # Ajuste na opção padx
 
         # Frame para detalhes da pontuação
         self.frame_detalhes_pontuacao = tk.Frame(self, bg="#F0F0F0")
-        self.frame_detalhes_pontuacao.grid(row=3, column=0, columnspan=2, pady=10)
+        self.frame_detalhes_pontuacao.grid(row=3, column=0, columnspan=2, pady=10, padx=20)  # Ajuste na opção padx
 
         # Label para exibir a pontuação total
         self.lbl_pontuacao_total = tk.Label(self.frame_detalhes_pontuacao, text="Pontuação: N/A", bg="#F0F0F0",
@@ -43,7 +52,11 @@ class InterfaceGrafica(tk.Tk):
 
         # Frame para exibir os critérios e pontuações
         self.frame_critérios = tk.Frame(self.frame_detalhes_pontuacao, bg="#F0F0F0")
-        self.frame_critérios.grid(row=1, column=0, columnspan=2, pady=10)
+        self.frame_critérios.grid(row=1, column=0, columnspan=2, pady=10, padx=(20, 20))  # Ajuste na opção padx
+
+        # Frame para exibir o relatório
+        self.frame_relatorio = tk.Frame(self.frame_detalhes_pontuacao, bg="#F0F0F0")
+        self.frame_relatorio.grid(row=2, column=0, columnspan=2, pady=10, padx=(20, 20))  # Ajuste na opção padx
 
         # Configurar o grid para que os elementos possam expandir para ocupar o espaço disponível
         for i in range(4):
@@ -56,6 +69,7 @@ class InterfaceGrafica(tk.Tk):
             self.caminho_arquivo = caminho_arquivo
             self.lbl_pontuacao_total.config(text="Pontuação: N/A")
             self.atualizar_detalhes_critérios({})  # Limpar detalhes dos critérios
+            self.atualizar_frame_relatorio({})  # Limpar relatório
 
     def iniciar_avaliacao(self):
         if hasattr(self, 'caminho_arquivo') and self.caminho_arquivo:
@@ -84,6 +98,9 @@ class InterfaceGrafica(tk.Tk):
         # Exibe os detalhes dos critérios
         self.atualizar_detalhes_critérios(pontuacoes_detalhadas)
 
+        # Atualiza o frame do relatório
+        self.atualizar_frame_relatorio(pontuacoes_detalhadas)
+
     def atualizar_detalhes_critérios(self, pontuacoes_detalhadas):
         # Limpar widgets antigos
         for widget in self.frame_critérios.winfo_children():
@@ -91,8 +108,11 @@ class InterfaceGrafica(tk.Tk):
 
         # Criar widgets para cada critério
         for i, (criterio, pontuacao) in enumerate(pontuacoes_detalhadas.items(), start=1):
+            # Usar o mapeamento de nomes para obter o nome desejado
+            nome_desejado = self.mapeamento_nomes.get(criterio, criterio)
+
             # Label para o nome do critério
-            lbl_criterio = tk.Label(self.frame_critérios, text=criterio, bg="#F0F0F0", font=("Helvetica", 12, "bold"))
+            lbl_criterio = tk.Label(self.frame_critérios, text=nome_desejado, bg="#F0F0F0", font=("Helvetica", 12, "bold"))
             lbl_criterio.grid(row=i, column=0, padx=(20, 0), pady=5, sticky="w")  # Ajuste para alinhar à esquerda
 
             # Label para a pontuação do critério
@@ -104,6 +124,24 @@ class InterfaceGrafica(tk.Tk):
             lbl_justificativa = tk.Label(self.frame_critérios, text=pontuacao['justificativa'], bg="#F0F0F0",
                                          font=("Helvetica", 10))
             lbl_justificativa.grid(row=i, column=2, padx=20, pady=5, sticky="w", columnspan=2)  # Ajuste para alinhar à esquerda
+
+    def atualizar_frame_relatorio(self, pontuacoes_detalhadas):
+        # Limpar widgets antigos
+        for widget in self.frame_relatorio.winfo_children():
+            widget.destroy()
+
+        # Criar widgets para exibir o relatório
+        for i, (criterio, detalhes) in enumerate(pontuacoes_detalhadas.items(), start=1):
+            lbl_criterio = tk.Label(self.frame_relatorio, text=f"{criterio}:", bg="#F0F0F0", font=("Helvetica", 12, "bold"))
+            lbl_criterio.grid(row=i, column=0, padx=(20, 0), pady=5, sticky="w")
+
+            lbl_pontuacao = tk.Label(self.frame_relatorio, text=f"Pontuação: {detalhes['pontuacao']:.2f}", bg="#F0F0F0",
+                                     font=("Helvetica", 12))
+            lbl_pontuacao.grid(row=i, column=1, padx=(0, 20), pady=5, sticky="e")
+
+            lbl_justificativa = tk.Label(self.frame_relatorio, text=f"Justificativa: {detalhes['justificativa']}", bg="#F0F0F0",
+                                         font=("Helvetica", 10))
+            lbl_justificativa.grid(row=i, column=2, padx=20, pady=5, sticky="w", columnspan=2)
 
 if __name__ == "__main__":
     app = InterfaceGrafica()

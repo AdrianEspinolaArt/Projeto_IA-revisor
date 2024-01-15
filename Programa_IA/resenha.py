@@ -38,15 +38,23 @@ class AvaliadorTexto:
 
         self.GIRIAS = ["cara", "mano", "pra", "to"]
 
+        # Contadores de erros ortográficos e gramaticais
+        self.erros_ortograficos = 0
+        self.erros_gramaticais = 0
+
     def verificar_estilo(self, normal_style):
         return sum(self.ESTILOS[estilo] if getattr(normal_style, estilo) != valor else 0
                    for estilo, valor in self.ESTILOS.items())
 
     def contar_erros_ortografia(self, texto_completo):
-        return len(self.spell.unknown(texto_completo.split())) if hasattr(self.spell, 'unknown') else 0
+        erros = len(self.spell.unknown(texto_completo.split())) if hasattr(self.spell, 'unknown') else 0
+        self.erros_ortograficos += erros
+        return erros
 
     def contar_erros_gramatica(self, doc_spacy):
-        return sum(1 for token in doc_spacy if token.pos_ == 'X')
+        erros = sum(1 for token in doc_spacy if token.pos_ == 'X')
+        self.erros_gramaticais += erros
+        return erros
 
     def avaliar_formatacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Formatacao']
@@ -90,23 +98,28 @@ class AvaliadorTexto:
         doc_spacy = self.nlp(texto_completo)
 
         if any(giria in texto_completo for giria in self.GIRIAS):
-            pontuacao -= self.PESOS['Lingua_Portuguesa'] * 0.2
+            pontuacao -= 0.2  # Desconto de 0.2 se houver gírias
 
         erros_ortografia = self.contar_erros_ortografia(texto_completo)
-
-        if erros_ortografia > 10:
-            pontuacao -= self.PESOS['Lingua_Portuguesa'] * 0.2
-        elif erros_ortografia > 0:
-            pontuacao -= self.PESOS['Lingua_Portuguesa'] * 0.1
-
         erros_gramatica = self.contar_erros_gramatica(doc_spacy)
+        
+        # Calcula o desconto com base no número de erros
+        desconto_erros = 0.0
+        if 1 <= erros_ortografia <= 10:
+            desconto_erros += 0.1
+        elif 11 <= erros_ortografia <= 20:
+            desconto_erros += 0.2
+        
+        if 1 <= erros_gramatica <= 10:
+            desconto_erros += 0.1
+        elif 11 <= erros_gramatica <= 20:
+            desconto_erros += 0.2
 
-        if erros_gramatica > 10:
-            pontuacao -= self.PESOS['Lingua_Portuguesa'] * 0.2
-        elif erros_gramatica > 0:
-            pontuacao -= self.PESOS['Lingua_Portuguesa'] * 0.1
+        # Aplica o desconto
+        pontuacao -= self.PESOS['Lingua_Portuguesa'] * desconto_erros
 
-        return max(0, pontuacao)
+        # Limita a pontuação ao valor máximo de 2.0
+        return max(0, min(pontuacao, 2.0))
 
     def avaliar_adequacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Adequacao']
@@ -189,6 +202,14 @@ class AvaliadorTexto:
             }
 
         pontuacao_total = sum(pontuacao['pontuacao'] for pontuacao in pontuacoes_detalhadas.values())
+
+        # Inclua os contadores de erros na justificativa
+        justificativa_erros = f"Erros ortográficos: {self.erros_ortograficos}\nErros gramaticais: {self.erros_gramaticais}"
+        pontuacoes_detalhadas['erros'] = {
+            'pontuacao': 0,  # Não contribui para a pontuação total
+            'justificativa': justificativa_erros
+        }
+
         return pontuacoes_detalhadas
 
     def obter_justificativa(self, criterio, pontuacao):
@@ -220,8 +241,3 @@ class AvaliadorTexto:
 
         # Se nenhum critério correspondente for encontrado, retorna uma mensagem padrão
         return 'Justificativa não disponível para este critério.'
-
-        self.imprimir_analise(pontuacoes)
-
-        pontuacao_total = sum(pontuacoes.values())
-        return pontuacao_total
