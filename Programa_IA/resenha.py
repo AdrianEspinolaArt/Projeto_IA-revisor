@@ -47,14 +47,22 @@ class AvaliadorTexto:
                    for estilo, valor in self.ESTILOS.items())
 
     def contar_erros_ortografia(self, texto_completo):
-        erros = len(self.spell.unknown(texto_completo.split())) if hasattr(self.spell, 'unknown') else 0
-        self.erros_ortograficos += erros
-        return erros
+        # Obtém uma lista de palavras originais
+        palavras_originais = texto_completo.split()
+
+        # Usa o Speller para corrigir as palavras
+        palavras_corrigidas = [self.spell(palavra) for palavra in palavras_originais]
+
+        # Compara as palavras originais com as corrigidas para contar os erros
+        erros_ortografia = sum(1 for palavra_orig, palavra_corrigida in zip(palavras_originais, palavras_corrigidas) if palavra_orig != palavra_corrigida)
+
+        return erros_ortografia
 
     def contar_erros_gramatica(self, doc_spacy):
-        erros = sum(1 for token in doc_spacy if token.pos_ == 'X')
-        self.erros_gramaticais += erros
-        return erros
+        # Conta os tokens com a classe gramatical 'X' (erros gramaticais)
+        erros_gramatica = sum(1 for token in doc_spacy if token.pos_ == 'X')
+
+        return erros_gramatica
 
     def avaliar_formatacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Formatacao']
@@ -92,7 +100,8 @@ class AvaliadorTexto:
         return max(0, pontuacao)
 
     def avaliar_lingua_portuguesa(self, doc):
-        pontuacao = self.PONTUACAO_INICIAL['Lingua_Portuguesa']
+        pontuacao_maxima = self.PONTUACAO_INICIAL['Lingua_Portuguesa']
+        pontuacao = pontuacao_maxima
 
         texto_completo = ' '.join(paragrafo.text for paragrafo in doc.paragraphs)
         doc_spacy = self.nlp(texto_completo)
@@ -102,24 +111,26 @@ class AvaliadorTexto:
 
         erros_ortografia = self.contar_erros_ortografia(texto_completo)
         erros_gramatica = self.contar_erros_gramatica(doc_spacy)
-        
+
         # Calcula o desconto com base no número de erros
         desconto_erros = 0.0
         if 1 <= erros_ortografia <= 10:
             desconto_erros += 0.1
         elif 11 <= erros_ortografia <= 20:
             desconto_erros += 0.2
-        
+
         if 1 <= erros_gramatica <= 10:
             desconto_erros += 0.1
         elif 11 <= erros_gramatica <= 20:
             desconto_erros += 0.2
 
-        # Aplica o desconto
-        pontuacao -= self.PESOS['Lingua_Portuguesa'] * desconto_erros
+        # Aplica o desconto diretamente na pontuação inicial
+        pontuacao -= desconto_erros
 
         # Limita a pontuação ao valor máximo de 2.0
-        return max(0, min(pontuacao, 2.0))
+        pontuacao = max(0, pontuacao_maxima - desconto_erros)
+
+        return pontuacao
 
     def avaliar_adequacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Adequacao']
