@@ -1,51 +1,110 @@
 import tkinter as tk
-from tkinter import filedialog
-from docx import Document
-from avaliador_texto import AvaliadorTexto
+from tkinter import ttk, filedialog, messagebox
+import time
+from resenha import AvaliadorTexto
+from artigo import AvaliadorArtigo
 
 class InterfaceGrafica(tk.Tk):
-
-    def __init__(self, avaliador):
-        super().__init__()
-        self.avaliador = avaliador
+    def __init__(self):
+        tk.Tk.__init__(self)
         self.title("Avaliador de Texto")
+        self.geometry("800x600")  # Ajustei o tamanho do aplicativo
+        self.configure(bg="#F0F0F0")  # Cor de fundo
 
-        # Adicionando opção para escolher o perfil
-        self.perfil_var = tk.StringVar(self)
-        self.perfis_disponiveis = ["Resenha", "OutroPerfil"]  # Adicione outros perfis conforme necessário
-        self.perfil_var.set(self.perfis_disponiveis[0])  # Definindo o perfil padrão
+        # Variável para armazenar o perfil selecionado
+        self.var_perfil = tk.StringVar(self)
+        self.var_perfil.set("Resenha")  # Perfil padrão
 
-        self.perfil_label = tk.Label(self, text="Escolha o Perfil:")
-        self.perfil_label.pack()
+        # Seletor de perfil
+        self.lbl_seletor_perfil = tk.Label(self, text="Selecione o Perfil:", bg="#F0F0F0", font=("Helvetica", 12))
+        self.lbl_seletor_perfil.grid(row=0, column=0, pady=10, padx=(20, 0), sticky="e")  # Ajuste para alinhar à direita
+        self.dropdown_perfil = ttk.Combobox(self, textvariable=self.var_perfil, values=["Resenha", "Artigo"],
+                                           font=("Helvetica", 12), state="readonly")
+        self.dropdown_perfil.grid(row=0, column=1, pady=10, padx=(0, 20), sticky="w")  # Ajuste para alinhar à esquerda
 
-        self.perfil_menu = tk.OptionMenu(self, self.perfil_var, *self.perfis_disponiveis)
-        self.perfil_menu.pack()
+        # Botão para selecionar o arquivo
+        self.btn_selecionar_arquivo = tk.Button(self, text="Selecionar Arquivo", command=self.selecionar_arquivo,
+                                                font=("Helvetica", 12), bg="#4CAF50", fg="white")
+        self.btn_selecionar_arquivo.grid(row=1, column=0, columnspan=2, pady=10)
 
-        self.abrir_button = tk.Button(self, text="Abrir Arquivo", command=self.abrir_arquivo)
-        self.abrir_button.pack(pady=20)
+        # Botão de iniciar
+        self.btn_iniciar = tk.Button(self, text="Iniciar Avaliação", command=self.iniciar_avaliacao,
+                                     font=("Helvetica", 12), bg="#008CBA", fg="white")
+        self.btn_iniciar.grid(row=2, column=0, columnspan=2, pady=10)
 
-    def abrir_arquivo(self):
-        caminho_arquivo = filedialog.askopenfilename(defaultextension=".docx", filetypes=[("Documentos Word", "*.docx")])
+        # Frame para detalhes da pontuação
+        self.frame_detalhes_pontuacao = tk.Frame(self, bg="#F0F0F0")
+        self.frame_detalhes_pontuacao.grid(row=3, column=0, columnspan=2, pady=10)
+
+        # Label para exibir a pontuação total
+        self.lbl_pontuacao_total = tk.Label(self.frame_detalhes_pontuacao, text="Pontuação: N/A", bg="#F0F0F0",
+                                            font=("Helvetica", 14, "bold"))
+        self.lbl_pontuacao_total.grid(row=0, column=0, columnspan=2, pady=10)
+
+        # Frame para exibir os critérios e pontuações
+        self.frame_critérios = tk.Frame(self.frame_detalhes_pontuacao, bg="#F0F0F0")
+        self.frame_critérios.grid(row=1, column=0, columnspan=2, pady=10)
+
+        # Configurar o grid para que os elementos possam expandir para ocupar o espaço disponível
+        for i in range(4):
+            self.grid_rowconfigure(i, weight=1)
+            self.grid_columnconfigure(0, weight=1)
+
+    def selecionar_arquivo(self):
+        caminho_arquivo = filedialog.askopenfilename(filetypes=[("Arquivos DOCX", "*.docx")])
         if caminho_arquivo:
-            doc = Document(caminho_arquivo)
-            texto_do_aluno = '\n'.join([paragrafo.text for paragrafo in doc.paragraphs])
+            self.caminho_arquivo = caminho_arquivo
+            self.lbl_pontuacao_total.config(text="Pontuação: N/A")
+            self.atualizar_detalhes_critérios({})  # Limpar detalhes dos critérios
 
-            # Aqui você pode usar a escolha do perfil para criar uma instância específica do AvaliadorTexto
-            perfil_selecionado = self.perfil_var.get()
+    def iniciar_avaliacao(self):
+        if hasattr(self, 'caminho_arquivo') and self.caminho_arquivo:
+            self.tempo_inicio = time.time()
+            if self.var_perfil.get() == "Resenha":
+                from resenha import AvaliadorTexto
+                self.avaliador = AvaliadorTexto(perfil="Resenha")
+            elif self.var_perfil.get() == "Artigo":
+                from artigo import AvaliadorArtigo
+                self.avaliador = AvaliadorArtigo(perfil="Artigo")
 
-            # Avaliar o texto e obter a pontuação final
-            pontuacao_final = self.avaliador.avaliar_texto(caminho_arquivo)
+            self.avaliar_arquivo(self.caminho_arquivo)
+        else:
+            messagebox.showinfo("Aviso", "Selecione um arquivo antes de iniciar a avaliação.")
 
-            # Exibir a pontuação final
-            self.mostrar_mensagem(f"Pontuação final do texto: {pontuacao_final}")
+    def avaliar_arquivo(self, caminho_arquivo):
+        pontuacoes_detalhadas = self.avaliador.avaliar_texto(caminho_arquivo)
 
-    def mostrar_mensagem(self, mensagem):
-        mensagem_label = tk.Label(self, text=mensagem)
-        mensagem_label.pack()
+        self.tempo_fim = time.time()
+        tempo_decorrido = self.tempo_fim - self.tempo_inicio
+
+        # Exibe os detalhes da pontuação total
+        pontuacao_total = sum(pontuacao['pontuacao'] for pontuacao in pontuacoes_detalhadas.values())
+        self.lbl_pontuacao_total.config(text=f"Pontuação: {pontuacao_total:.2f}")
+
+        # Exibe os detalhes dos critérios
+        self.atualizar_detalhes_critérios(pontuacoes_detalhadas)
+
+    def atualizar_detalhes_critérios(self, pontuacoes_detalhadas):
+        # Limpar widgets antigos
+        for widget in self.frame_critérios.winfo_children():
+            widget.destroy()
+
+        # Criar widgets para cada critério
+        for i, (criterio, pontuacao) in enumerate(pontuacoes_detalhadas.items(), start=1):
+            # Label para o nome do critério
+            lbl_criterio = tk.Label(self.frame_critérios, text=criterio, bg="#F0F0F0", font=("Helvetica", 12, "bold"))
+            lbl_criterio.grid(row=i, column=0, padx=(20, 0), pady=5, sticky="w")  # Ajuste para alinhar à esquerda
+
+            # Label para a pontuação do critério
+            lbl_pontuacao = tk.Label(self.frame_critérios, text=f"{pontuacao['pontuacao']:.2f}", bg="#F0F0F0",
+                                     font=("Helvetica", 12))
+            lbl_pontuacao.grid(row=i, column=1, padx=(0, 20), pady=5, sticky="e")  # Ajuste para alinhar à direita
+
+            # Label para a justificativa do critério
+            lbl_justificativa = tk.Label(self.frame_critérios, text=pontuacao['justificativa'], bg="#F0F0F0",
+                                         font=("Helvetica", 10))
+            lbl_justificativa.grid(row=i, column=2, padx=20, pady=5, sticky="w", columnspan=2)  # Ajuste para alinhar à esquerda
 
 if __name__ == "__main__":
-    perfil_padrao = "Resenha"  # Defina o perfil desejado aqui
-    avaliador = AvaliadorTexto(perfil=perfil_padrao)
-    interface = InterfaceGrafica(avaliador)
-    interface.mainloop()
-
+    app = InterfaceGrafica()
+    app.mainloop()
