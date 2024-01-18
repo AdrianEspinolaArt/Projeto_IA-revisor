@@ -299,13 +299,9 @@ class AvaliadorTexto:
             # Adicione uma justificativa adequada para cada critério
             justificativa = self.obter_justificativa(criterio, pontuacao)
 
-            # Adicione informações sobre palavras erradas
-            palavras_erradas = self.obter_palavras_erradas(doc)
-
             pontuacoes_detalhadas[criterio] = {
                 'pontuacao': pontuacao,
                 'justificativa': justificativa,
-                'palavras_erradas': palavras_erradas
             }
 
         return pontuacoes_detalhadas
