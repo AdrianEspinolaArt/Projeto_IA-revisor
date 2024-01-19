@@ -2,6 +2,7 @@ from docx import Document
 import spacy
 from autocorrect import Speller
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
+import os
 
 class AvaliadorTexto:
     def __init__(self, perfil):
@@ -10,6 +11,12 @@ class AvaliadorTexto:
         self.spell = Speller(lang='pt')
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+
+        # Caminho para o arquivo de gírias
+        caminho_girias = 'girias.txt'
+
+        # Carrega as gírias do arquivo
+        self.GIRIAS = self.carregar_girias(caminho_girias)
 
         # Constantes
         self.PONTUACAO_INICIAL = {
@@ -28,11 +35,17 @@ class AvaliadorTexto:
             3: 0.1
         }
 
-        self.GIRIAS = ["cara", "mano", "pra", "to"]
-
         # Contadores de erros ortográficos e gramaticais
         self.erros_ortograficos = 0
         self.erros_gramaticais = 0
+
+    def carregar_girias(self, caminho):
+        if os.path.exists(caminho):
+            with open(caminho, 'r', encoding='utf-8') as file:
+                return [linha.strip() for linha in file.readlines()]
+        else:
+            print(f"Arquivo de gírias não encontrado em {caminho}. Usando lista vazia de gírias.")
+            return []    
 
     def verificar_estilo(self, normal_style):
         return sum(self.ESTILOS[estilo] if getattr(normal_style, estilo) != valor else 0
