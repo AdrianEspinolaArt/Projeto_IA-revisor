@@ -37,7 +37,7 @@ class AvaliadorTexto:
 
         # Contadores de erros ortográficos e gramaticais
         self.erros_ortograficos = 0
-        self.erros_gramaticais = 0
+        self.erros_gramaticais = 0 
 
     def carregar_girias(self, caminho):
         if os.path.exists(caminho):
@@ -52,22 +52,66 @@ class AvaliadorTexto:
                    for estilo, valor in self.ESTILOS.items())
 
     def contar_erros_ortografia(self, texto_completo):
-        # Obtém uma lista de palavras originais
-        palavras_originais = texto_completo.split()
+        doc_spacy = self.nlp(texto_completo)
 
-        # Usa o Speller para corrigir as palavras
-        palavras_corrigidas = [self.spell(palavra) for palavra in palavras_originais]
+        # Coleta palavras originais e corrige usando o Speller
+        palavras_corrigidas = [self.spell(token.text) for token in doc_spacy]
+
+        # Conjunto para armazenar palavras já avaliadas
+        palavras_avaliadas = set()
+
+        # Lista para armazenar palavras consideradas incorretas
+        palavras_incorretas = []
 
         # Compara as palavras originais com as corrigidas para contar os erros
-        erros_ortografia = sum(1 for palavra_orig, palavra_corrigida in zip(palavras_originais, palavras_corrigidas) if palavra_orig != palavra_corrigida)
+        erros_ortografia = 0
+        for token, palavra_corrigida in zip(doc_spacy, palavras_corrigidas):
+            # Verifica se a palavra já foi avaliada
+            if token.text not in palavras_avaliadas:
+                # Conta como um erro apenas se a palavra original e corrigida forem diferentes
+                if token.text != palavra_corrigida:
+                    erros_ortografia += 1
+                    palavras_incorretas.append(token.text)
+
+                # Adiciona a palavra ao conjunto de palavras avaliadas
+                palavras_avaliadas.add(token.text)
+
+        # Salva palavras incorretas em um arquivo
+        with open('palavras_incorretas.txt', 'w', encoding='utf-8') as arquivo_saida:
+            for palavra_incorreta in palavras_incorretas:
+                arquivo_saida.write(f'{palavra_incorreta}\n')      
 
         return erros_ortografia
 
     def contar_erros_gramatica(self, doc_spacy):
-        # Conta os tokens com a classe gramatical 'X' (erros gramaticais)
-        erros_gramatica = sum(1 for token in doc_spacy if token.pos_ == 'X')
+        erros_gramatica = 0
+
+        # Iterar sobre os tokens no documento
+        for token in doc_spacy:
+            # Lógica para verificar se o token representa um possível erro gramatical
+            if self.eh_erro_gramatical(token):
+                erros_gramatica += 1
 
         return erros_gramatica
+
+    def eh_erro_gramatical(self, token):
+        # Lógica para verificar se o token representa um possível erro gramatical
+        # Exemplo: verificar se o token é um verbo fora do padrão usando lematização e classe gramatical
+        if token.pos_ == 'VERB':
+            verbo_base = token.lemma_
+            # Aqui você pode adicionar condições específicas para considerar o verbo como um erro
+            # Exemplo: verificar se o verbo base está fora de uma lista de verbos aceitáveis
+            verbos_aceitaveis = ['encontrar', 'falar', 'correr']
+            if verbo_base not in verbos_aceitaveis:
+                return True
+
+        # Exemplo adicional: verificar se a pontuação não está correta
+        if token.pos_ == 'PUNCT':
+            pontuacoes_aceitaveis = ['.', ',', '?', '!']
+            if token.orth_ not in pontuacoes_aceitaveis:
+                return True
+
+        return False
 
     def avaliar_formatacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Formatacao']
@@ -109,51 +153,50 @@ class AvaliadorTexto:
         texto_completo = ' '.join(paragrafo.text for paragrafo in doc.paragraphs)
         doc_spacy = self.nlp(texto_completo)
 
-        print("Texto Completo:", texto_completo)  # Adicionado para verificar o texto completo
-        print("Gírias presentes:", any(giria in texto_completo for giria in self.GIRIAS))  # Adicionado para verificar a presença de gírias
+        # Avaliação de Gírias
+        girias_presentes = any(giria in texto_completo for giria in self.GIRIAS)
+        if girias_presentes:
+            desconto_girias = 0.1
+            pontuacao -= desconto_girias
+            print(f"Desconto de {desconto_girias} por gírias aplicado. Pontuação após desconto: {pontuacao}")
 
-        if any(giria in texto_completo for giria in self.GIRIAS):
-            pontuacao -= 0.1  # Desconto de 0.1 se houver gírias
-            print("Desconto por gírias aplicado. Pontuação após desconto:", pontuacao)
-
+        # Avaliação de Erros Ortográficos e Gramaticais
         erros_ortografia = self.contar_erros_ortografia(texto_completo)
         erros_gramatica = self.contar_erros_gramatica(doc_spacy)
 
-        print("Erros ortográficos:", erros_ortografia)  # Adicionado para verificar a contagem de erros ortográficos
-        print("Erros gramaticais:", erros_gramatica)  # Adicionado para verificar a contagem de erros gramaticais
+        # Imprimir a quantidade de erros ortográficos antes de aplicar o desconto
+        print(f"Número total de erros ortográficos encontrados: {erros_ortografia}")
+        print(f"Número total de erros gramaticais encontrados: {erros_gramatica}")
 
-        # Ajuste dos descontos por erros ortográficos
-        if 1 <= erros_ortografia <= 10:
-            pontuacao -= 0.1
-            print("Desconto de 0.1 por erros ortográficos aplicado.")
-        elif 11 <= erros_ortografia <= 20:
-            pontuacao -= 0.2
-            print("Desconto de 0.2 por erros ortográficos aplicado.")
-        elif erros_ortografia == 0:
-            print("Nenhum erro ortográfico encontrado. Nenhum desconto aplicado.")
+        # Aqui, corrigimos os nomes das variáveis
+        desconto_ortografia = self.aplicar_desconto_por_erros(erros_ortografia)
+        desconto_gramatica = self.aplicar_desconto_por_erros(erros_gramatica)
 
+        pontuacao -= desconto_ortografia + desconto_gramatica
 
-        # Ajuste dos descontos por erros gramaticais
-        if 1 <= erros_gramatica <= 10:
-            pontuacao -= 0.1
-            print("Desconto de 0.1 por erros gramaticais aplicado.")
-        elif 11 <= erros_gramatica <= 20:
-            pontuacao -= 0.2
-            print("Desconto de 0.2 por erros gramaticais aplicado.")
-        elif erros_gramatica == 0:
-            print("Nenhum erro gramatical encontrado. Nenhum desconto aplicado.")
-
-
-        # Imprimir valores intermediários
-        print("Pontuação antes dos descontos:", pontuacao)
-        print("Desconto por erros ortográficos:", 0.1 if 1 <= erros_ortografia <= 10 else 0.2)
-        print("Desconto por erros gramaticais:", 0.1 if 1 <= erros_gramatica <= 10 else 0.2)
+        # Impressão de valores intermediários
+        self.imprimir_valores_intermediarios(pontuacao_maxima, erros_ortografia, erros_gramatica)
 
         # Limita a pontuação ao valor máximo definido
         pontuacao = max(0, min(pontuacao, pontuacao_maxima))
-        print("Pontuação final:", pontuacao)  # Adicionado para verificar a pontuação final
+        print("Pontuação final:", pontuacao)
 
         return pontuacao
+
+    def aplicar_desconto_por_erros(self, num_erros):
+        if 1 <= num_erros <= 10:
+            return 0.1
+        elif 11 <= num_erros <= 20:
+            return 0.2
+        elif num_erros == 0:
+            return 0
+        return 0
+
+    def imprimir_valores_intermediarios(self, pontuacao_maxima, erros_ortografia, erros_gramatica):
+        # Corrigido o nome da variável para pontuacao_maxima
+        print("Pontuação antes dos descontos:", pontuacao_maxima)
+        print("Desconto por erros ortográficos:", self.aplicar_desconto_por_erros(erros_ortografia))
+        print("Desconto por erros gramaticais:", self.aplicar_desconto_por_erros(erros_gramatica))
 
     def avaliar_adequacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Adequacao']
@@ -224,34 +267,29 @@ class AvaliadorTexto:
         pontuacoes_detalhadas = {}
 
         for criterio in self.PONTUACAO_INICIAL:
-            avaliacao_funcao = getattr(self, f'avaliar_{criterio.lower().replace(" ", "_").replace("ções", "coes").replace("ção", "cao")}')
-            pontuacao = avaliacao_funcao(doc)
+            # Condição para evitar 'ERROS' como critério
+            if criterio.lower() != 'erros':
+                avaliacao_funcao = getattr(self, f'avaliar_{criterio.lower().replace(" ", "_").replace("ções", "coes").replace("ção", "cao")}')
+                pontuacao = avaliacao_funcao(doc)
 
-            # Adicione uma justificativa adequada para cada critério
-            justificativa = self.obter_justificativa(criterio, pontuacao)
+                # Adicione uma justificativa adequada para cada critério
+                justificativa = self.obter_justificativa(criterio, pontuacao)
 
-            pontuacoes_detalhadas[criterio] = {
-                'pontuacao': pontuacao,
-                'justificativa': justificativa
-            }
-
-        # Inclua os contadores de erros na justificativa
-        justificativa_erros = f"Erros ortográficos: {self.erros_ortograficos}\nErros gramaticais: {self.erros_gramaticais}"
-        pontuacoes_detalhadas['erros'] = {
-            'pontuacao': 0,  # Não contribui para a pontuação total
-            'justificativa': justificativa_erros
-        }
+                pontuacoes_detalhadas[criterio] = {
+                    'pontuacao': pontuacao,
+                    'justificativa': justificativa
+                }
 
         return pontuacoes_detalhadas
 
     def obter_justificativa(self, criterio, pontuacao):
         if criterio == 'Formatacao':
-            if pontuacao > 0.5:
+            if pontuacao >= 0.5:
                 return 'A formatação está boa.'
             else:
                 return 'Problemas na formatação.'
         elif criterio == 'Linhas':
-            if pontuacao > 0.5:
+            if pontuacao >= 0.5:
                 return 'Número adequado de linhas.'
             else:
                 return 'Número de linhas inadequado.'

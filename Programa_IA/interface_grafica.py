@@ -2,12 +2,13 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import time
 from resenha import AvaliadorTexto
+from artigo import AvaliadorArtigo
 
 class InterfaceGrafica(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.title("Avaliador de Texto")
-        self.geometry("800x800")  # Ajustei o tamanho do aplicativo
+        self.geometry("1000x800")  # Ajustei o tamanho do aplicativo
         self.configure(bg="#F0F0F0")  # Cor de fundo
 
         # Mapeamento de nomes para tornar os critérios mais legíveis
@@ -53,6 +54,23 @@ class InterfaceGrafica(tk.Tk):
         self.frame_critérios = tk.Frame(self.frame_detalhes_pontuacao, bg="#F0F0F0")
         self.frame_critérios.grid(row=1, column=0, columnspan=2, pady=10, padx=(20, 20))  # Ajuste na opção padx
 
+        # Frame retangular para justificativas
+        self.frame_justificativas = tk.Frame(self.frame_detalhes_pontuacao, bg="white", width=200, height=140)
+        self.frame_justificativas.grid(row=1, column=3, padx=(20, 20), pady=5, sticky="n")
+
+        # Label para título do frame de justificativas
+        lbl_titulo_justificativas = tk.Label(self.frame_justificativas, text="Justificativas", bg="white", font=("Helvetica", 12, "bold"))
+        lbl_titulo_justificativas.pack(side="top", pady=5)
+
+        # Texto para mostrar as justificativas
+        txt_justificativas = tk.Text(self.frame_justificativas, wrap="word", height=5, width=30, bg="white", font=("Helvetica", 10))
+        txt_justificativas.pack(side="top", pady=5)
+
+        # Adicionar rolagem para o texto (caso necessário)
+        scrollbar_justificativas = tk.Scrollbar(self.frame_justificativas, command=txt_justificativas.yview)
+        scrollbar_justificativas.pack(side="right", fill="y")
+        txt_justificativas.config(yscrollcommand=scrollbar_justificativas.set)
+
         # Configurar o grid para que os elementos possam expandir para ocupar o espaço disponível
         for i in range(4):
             self.grid_rowconfigure(i, weight=1)
@@ -68,11 +86,11 @@ class InterfaceGrafica(tk.Tk):
     def iniciar_avaliacao(self):
         if hasattr(self, 'caminho_arquivo') and self.caminho_arquivo:
             self.tempo_inicio = time.time()
+
+            # Importa a classe apropriada com base no perfil
             if self.var_perfil.get() == "Resenha":
-                from resenha import AvaliadorTexto
                 self.avaliador = AvaliadorTexto(perfil="Resenha")
             elif self.var_perfil.get() == "Artigo":
-                from artigo import AvaliadorArtigo
                 self.avaliador = AvaliadorArtigo(perfil="Artigo")
 
             self.avaliar_arquivo(self.caminho_arquivo)
@@ -108,12 +126,12 @@ class InterfaceGrafica(tk.Tk):
 
             # Label para a pontuação do critério
             lbl_pontuacao = tk.Label(self.frame_critérios, text=f"Pontuação: {pontuacao['pontuacao']:.2f}", bg="#F0F0F0",
-                                     font=("Helvetica", 12))
+                                    font=("Helvetica", 12))
             lbl_pontuacao.grid(row=i, column=1, padx=(0, 20), pady=5, sticky="e")  # Ajuste para alinhar à direita
 
             # Label para a justificativa do critério
             lbl_justificativa = tk.Label(self.frame_critérios, text=pontuacao['justificativa'], bg="#F0F0F0",
-                                         font=("Helvetica", 10))
+                                        font=("Helvetica", 10))
             lbl_justificativa.grid(row=i, column=2, padx=20, pady=5, sticky="w", columnspan=2)  # Ajuste para alinhar à esquerda
 
 if __name__ == "__main__":
