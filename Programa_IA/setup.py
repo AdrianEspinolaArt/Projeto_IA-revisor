@@ -1,8 +1,4 @@
-from cx_Freeze import setup, Executable
+from distutils.core import setup
+import py2exe
 
-setup(
-    name="AI REVISOR",
-    version="1.0",
-    description="revisor de texto baseado em nlp e chatgpt",
-    executables=[Executable("seu_script.py")],
-)
+setup(console=['main.py'])
