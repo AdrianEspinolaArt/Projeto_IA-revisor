@@ -82,29 +82,39 @@ class AvaliadorTexto:
 
         return erros_ortografia
 
-    def eh_erro_gramatical_avancado(self, token, doc):
-        # Lógica para verificar se o token representa um possível erro gramatical
-        if token.pos_ == 'VERB':
-            # Verificar se há sujeito e objeto associados ao verbo
-            sujeito_presente = any(token_dep.dep_ == 'nsubj' for token_dep in token.children)
-            objeto_presente = any(token_dep.dep_ == 'obj' for token_dep in token.children)
-            
-            # Se não há sujeito ou objeto, considerar como erro
-            if not (sujeito_presente and objeto_presente):
-                return True
+    def eh_erro_gramatical_avancado(self, token):
+            # Lógica para verificar se o token representa um possível erro gramatical
+            if token.pos_ == 'VERB':
+                # Verificar se há sujeito associado ao verbo
+                sujeito_presente = any(token_dep.dep_ == 'nsubj' for token_dep in token.children)
+                
+                # Se não há sujeito, considerar como erro
+                if not sujeito_presente:
+                    return True
 
-        # Adicione mais lógica conforme necessário para outras classes gramaticais
+            # Adicione mais lógica conforme necessário para outras classes gramaticais
+            # Aqui adicionamos uma verificação para artigos indefinidos antes de substantivos
+            if token.pos_ == 'DET' and token.text.lower() == 'um':
+                proximo_token = token.head
+                if proximo_token.pos_ == 'NOUN':
+                    return True
 
-        return False
+            return False
 
     def contar_erros_gramatica(self, doc_spacy):
         erros_gramatica = 0
+        palavras_incorretas = []
 
         # Iterar sobre os tokens no documento
         for token in doc_spacy:
             # Lógica avançada para verificar se o token representa um possível erro gramatical
-            if self.eh_erro_gramatical_avancado(token, doc_spacy):
+            if self.eh_erro_gramatical_avancado(token):
                 erros_gramatica += 1
+                palavras_incorretas.append(token.text)
+
+        # Salva palavras incorretas em um arquivo
+        with open('palavras_incorretas_gramatica.txt', 'w', encoding='utf-8') as arquivo_saida:
+            arquivo_saida.writelines(f'{palavra_incorreta}\n' for palavra_incorreta in palavras_incorretas)
 
         return erros_gramatica
 
@@ -169,6 +179,9 @@ class AvaliadorTexto:
 
         pontuacao -= desconto_ortografia + desconto_gramatica
 
+        # Exibir erros gramaticais
+        self.contar_erros_gramatica(doc_spacy)
+
         # Impressão de valores intermediários
         self.imprimir_valores_intermediarios(pontuacao_maxima, erros_ortografia, erros_gramatica)
 
@@ -181,7 +194,7 @@ class AvaliadorTexto:
     def aplicar_desconto_por_erros(self, num_erros):
         if 1 <= num_erros <= 10:
             return 0.1
-        elif 11 <= num_erros <= 20:
+        elif 11 <= num_erros <= 60:
             return 0.2
         elif num_erros == 0:
             return 0
@@ -194,56 +207,10 @@ class AvaliadorTexto:
         print("Desconto por erros gramaticais:", self.aplicar_desconto_por_erros(erros_gramatica))
 
     def avaliar_adequacao(self, doc):
-        pontuacao = self.PONTUACAO_INICIAL['Adequacao']
-
-        for paragrafo in doc.paragraphs:
-            doc_spacy = self.nlp(paragrafo.text)
-
-            gpt_input = "Avalie a adequacao do seguinte texto: " + paragrafo.text
-            gpt_output = self.gpt_avaliar_coerencia(gpt_input)
-
-            pontuacao_ajuste = self.analisar_gpt_output(gpt_output)
-            pontuacao -= pontuacao_ajuste
-
-            if 'tema' in paragrafo.text.lower():
-                pontuacao += 1.0
-
-            if 'atendimento a proposta' in paragrafo.text.lower():
-                pontuacao += 1.0
-
-        return max(0, pontuacao)
-
-    def analisar_gpt_output(self, gpt_output):
-        num_palavras = len(gpt_output.split())
-        num_frases_coerentes = gpt_output.count('.') + gpt_output.count('!') + gpt_output.count('?')
-
-        pontuacao = 0.0
-
-        if num_palavras > 50:
-            pontuacao += 0.5
-
-        if num_frases_coerentes > 3:
-            pontuacao += 0.5
+        # Simulando uma pontuação fictícia para testes
+        pontuacao = 5.0
 
         return pontuacao
-
-    def gpt_avaliar_coerencia(self, input_text):
-        input_ids = self.gpt_tokenizer.encode(input_text, return_tensors="pt")
-        eos_token_id = self.gpt_tokenizer.eos_token_id
-        print(f"ID do token de fim de sequencia: {eos_token_id}")
-        
-        output = self.gpt_model.generate(
-            input_ids,
-            max_length=263,
-            num_beams=5,
-            no_repeat_ngram_size=2,
-            top_k=50,
-            top_p=0.95,
-            temperature=0.7,
-            pad_token_id=50256
-        )
-        decoded_output = self.gpt_tokenizer.decode(output[0], skip_special_tokens=True)
-        return decoded_output
 
     def imprimir_analise(self, pontuacoes):
         print("Analise de Pontuacoes:")
