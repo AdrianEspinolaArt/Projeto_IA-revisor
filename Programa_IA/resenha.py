@@ -3,8 +3,6 @@ import spacy
 from autocorrect import Speller
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import os
-import enchant
-import hunspell
 
 class AvaliadorTexto:
     def __init__(self, perfil):
@@ -13,7 +11,7 @@ class AvaliadorTexto:
         self.spell = Speller(lang='pt')
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-        
+
         # Caminho para o arquivo de gírias
         caminho_girias = 'girias.txt'
 
@@ -57,13 +55,13 @@ class AvaliadorTexto:
         doc_spacy = self.nlp(texto_completo)
 
         # Coleta palavras originais e corrige usando o Speller
-        palavras_corrigidas = [self.spell(token.text) for token in doc_spacy]
+        palavras_corrigidas = [self.spell(token.text) if token.is_alpha and not token.text.isupper() else token.text for token in doc_spacy]
 
         # Conjunto para armazenar palavras já avaliadas
         palavras_avaliadas = set()
 
-        # Lista para armazenar palavras consideradas incorretas
-        palavras_incorretas = []
+        # Conjunto para armazenar palavras consideradas incorretas
+        palavras_incorretas = set()
 
         # Compara as palavras originais com as corrigidas para contar os erros
         erros_ortografia = 0
@@ -73,15 +71,14 @@ class AvaliadorTexto:
                 # Conta como um erro apenas se a palavra original e corrigida forem diferentes
                 if token.text != palavra_corrigida:
                     erros_ortografia += 1
-                    palavras_incorretas.append(token.text)
+                    palavras_incorretas.add(token.text)
 
                 # Adiciona a palavra ao conjunto de palavras avaliadas
                 palavras_avaliadas.add(token.text)
 
         # Salva palavras incorretas em um arquivo
         with open('palavras_incorretas.txt', 'w', encoding='utf-8') as arquivo_saida:
-            for palavra_incorreta in palavras_incorretas:
-                arquivo_saida.write(f'{palavra_incorreta}\n')      
+            arquivo_saida.writelines(f'{palavra_incorreta}\n' for palavra_incorreta in palavras_incorretas)
 
         return erros_ortografia
 
