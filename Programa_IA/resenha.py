@@ -150,6 +150,9 @@ class AvaliadorTexto:
             pontuacao -= 1.0
 
         return max(0, pontuacao)
+    def salvar_log(self, mensagem):
+        with open('log.txt', 'a', encoding='utf-8') as arquivo_log:
+            arquivo_log.write(mensagem + '\n')
 
     def avaliar_lingua_portuguesa(self, doc):
         pontuacao_maxima = self.PONTUACAO_INICIAL['Lingua_Portuguesa']
@@ -184,6 +187,13 @@ class AvaliadorTexto:
 
         # Impressão de valores intermediários
         self.imprimir_valores_intermediarios(pontuacao_maxima, erros_ortografia, erros_gramatica)
+       
+        mensagem_erros_ortografia = f"Número total de erros ortográficos encontrados: {erros_ortografia}"
+        self.salvar_log(mensagem_erros_ortografia)
+
+        # Imprimir a quantidade de erros gramaticais antes de aplicar o desconto
+        mensagem_erros_gramatica = f"Número total de erros gramaticais encontrados: {erros_gramatica}"
+        self.salvar_log(mensagem_erros_gramatica)
 
         # Limita a pontuação ao valor máximo definido
         pontuacao = max(0, min(pontuacao, pontuacao_maxima))
