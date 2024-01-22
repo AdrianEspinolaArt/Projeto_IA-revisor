@@ -3,6 +3,8 @@ import spacy
 from autocorrect import Speller
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import os
+import enchant
+import hunspell
 
 class AvaliadorTexto:
     def __init__(self, perfil):
@@ -11,7 +13,7 @@ class AvaliadorTexto:
         self.spell = Speller(lang='pt')
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-
+        
         # Caminho para o arquivo de gírias
         caminho_girias = 'girias.txt'
 
@@ -83,35 +85,31 @@ class AvaliadorTexto:
 
         return erros_ortografia
 
+    def eh_erro_gramatical_avancado(self, token, doc):
+        # Lógica para verificar se o token representa um possível erro gramatical
+        if token.pos_ == 'VERB':
+            # Verificar se há sujeito e objeto associados ao verbo
+            sujeito_presente = any(token_dep.dep_ == 'nsubj' for token_dep in token.children)
+            objeto_presente = any(token_dep.dep_ == 'obj' for token_dep in token.children)
+            
+            # Se não há sujeito ou objeto, considerar como erro
+            if not (sujeito_presente and objeto_presente):
+                return True
+
+        # Adicione mais lógica conforme necessário para outras classes gramaticais
+
+        return False
+
     def contar_erros_gramatica(self, doc_spacy):
         erros_gramatica = 0
 
         # Iterar sobre os tokens no documento
         for token in doc_spacy:
-            # Lógica para verificar se o token representa um possível erro gramatical
-            if self.eh_erro_gramatical(token):
+            # Lógica avançada para verificar se o token representa um possível erro gramatical
+            if self.eh_erro_gramatical_avancado(token, doc_spacy):
                 erros_gramatica += 1
 
         return erros_gramatica
-
-    def eh_erro_gramatical(self, token):
-        # Lógica para verificar se o token representa um possível erro gramatical
-        # Exemplo: verificar se o token é um verbo fora do padrão usando lematização e classe gramatical
-        if token.pos_ == 'VERB':
-            verbo_base = token.lemma_
-            # Aqui você pode adicionar condições específicas para considerar o verbo como um erro
-            # Exemplo: verificar se o verbo base está fora de uma lista de verbos aceitáveis
-            verbos_aceitaveis = ['encontrar', 'falar', 'correr']
-            if verbo_base not in verbos_aceitaveis:
-                return True
-
-        # Exemplo adicional: verificar se a pontuação não está correta
-        if token.pos_ == 'PUNCT':
-            pontuacoes_aceitaveis = ['.', ',', '?', '!']
-            if token.orth_ not in pontuacoes_aceitaveis:
-                return True
-
-        return False
 
     def avaliar_formatacao(self, doc):
         pontuacao = self.PONTUACAO_INICIAL['Formatacao']
