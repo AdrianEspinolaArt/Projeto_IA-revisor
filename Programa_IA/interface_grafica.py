@@ -150,7 +150,10 @@ class InterfaceGrafica(tk.Tk):
         lbl_pontuacao_total = tk.Label(self.frame_detalhes_pontuacao, text=f"Pontuação: {pontuacao_total:.2f}", bg="#F0F0F0",
                                     font=("Helvetica", 14, "bold"))
         lbl_pontuacao_total.grid(row=0, column=0, columnspan=2, pady=10)
-
+        
+        for widget in self.frame_feedback.winfo_children():
+            widget.grid_forget()
+       
         # Adiciona feedback
         if pontuacao_total > 0:
             feedback = self.obter_feedback(pontuacao_total)

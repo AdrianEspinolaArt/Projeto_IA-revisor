@@ -1,0 +1,8 @@
+Número total de erros ortográficos encontrados: 8
+Número total de erros gramaticais encontrados: 25
+Número total de erros ortográficos encontrados: 22
+Número total de erros gramaticais encontrados: 31
+Número total de erros ortográficos encontrados: 8
+Número total de erros gramaticais encontrados: 25
+Número total de erros ortográficos encontrados: 18
+Número total de erros gramaticais encontrados: 36
