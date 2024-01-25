@@ -3,6 +3,7 @@ import spacy
 from autocorrect import Speller
 from transformers import GPT2LMHeadModel, GPT2Tokenizer
 import os
+from docx import Document
 
 class AvaliadorTexto:
     def __init__(self, perfil):
@@ -11,7 +12,7 @@ class AvaliadorTexto:
         self.spell = Speller(lang='pt')
         self.gpt_model = GPT2LMHeadModel.from_pretrained("gpt2")
         self.gpt_tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-
+        self.palavras_incorretas = []
         # Caminho para o arquivo de gírias
         caminho_girias = 'girias.txt'
 
@@ -76,9 +77,14 @@ class AvaliadorTexto:
                 # Adiciona a palavra ao conjunto de palavras avaliadas
                 palavras_avaliadas.add(token.text)
 
+        # Adiciona palavras consideradas incorretas à lista
+        for token, palavra_corrigida in zip(doc_spacy, palavras_corrigidas):
+            if token.text != palavra_corrigida:
+                self.palavras_incorretas.append(token.text)
+
         # Salva palavras incorretas em um arquivo
         with open('palavras_incorretas.txt', 'w', encoding='utf-8') as arquivo_saida:
-            arquivo_saida.writelines(f'{palavra_incorreta}\n' for palavra_incorreta in palavras_incorretas)
+            arquivo_saida.writelines(f'{palavra_incorreta}\n' for palavra_incorreta in self.palavras_incorretas)
 
         return erros_ortografia
 
@@ -150,6 +156,7 @@ class AvaliadorTexto:
             pontuacao -= 1.0
 
         return max(0, pontuacao)
+    
     def salvar_log(self, mensagem):
         with open('log.txt', 'a', encoding='utf-8') as arquivo_log:
             arquivo_log.write(mensagem + '\n')
@@ -252,7 +259,10 @@ class AvaliadorTexto:
                     'justificativa': justificativa
                 }
 
-        return pontuacoes_detalhadas
+        # Obter o texto avaliado
+        texto_avaliado = '\n'.join(paragrafo.text for paragrafo in doc.paragraphs)
+
+        return pontuacoes_detalhadas, texto_avaliado
 
     def obter_justificativa(self, criterio, pontuacao):
         if criterio == 'Formatacao':

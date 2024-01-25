@@ -3,6 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 import time
 from resenha import AvaliadorTexto
 from artigo import AvaliadorArtigo
+from docx import Document
 
 class InterfaceGrafica(tk.Tk):
     def __init__(self):
@@ -54,26 +55,29 @@ class InterfaceGrafica(tk.Tk):
         self.frame_critérios = tk.Frame(self.frame_detalhes_pontuacao, bg="#F0F0F0")
         self.frame_critérios.grid(row=1, column=0, columnspan=2, pady=10, padx=(20, 20))  # Ajuste na opção padx
 
-        # Frame retangular para justificativas
-        self.frame_justificativas = tk.Frame(self.frame_detalhes_pontuacao, bg="white", width=200, height=140)
-        self.frame_justificativas.grid(row=1, column=3, padx=(20, 20), pady=5, sticky="n")
-
-        # Label para título do frame de justificativas
-        lbl_titulo_justificativas = tk.Label(self.frame_justificativas, text="Pontuações Detalhadas", bg="white", font=("Helvetica", 12, "bold"))
-        lbl_titulo_justificativas.pack(side="top", pady=5)
-
-        # Texto para mostrar as justificativas
-        txt_justificativas = tk.Text(self.frame_justificativas, wrap="word", height=15, width=50, bg="white", font=("Helvetica", 10))
-        txt_justificativas.pack(side="top", pady=5)
-
         # Frame retangular para feedback
         self.frame_feedback = tk.Frame(self.frame_detalhes_pontuacao, bg="white", width=500, height=200)
         self.frame_feedback.grid(row=3, column=0, padx=(20, 20), pady=5, sticky="n")
+
+        self.texto_avaliado = tk.Text(self.frame_detalhes_pontuacao, wrap="word", height=10, width=70, bg="white", font=("Helvetica", 10))
+        self.texto_avaliado.grid(row=4, column=0, columnspan=2, pady=10, padx=(20, 20))  # Ajuste na opção padx
+
+        # Componente de texto para exibir o log
+        self.texto_log = tk.Text(self.frame_detalhes_pontuacao, wrap="word", height=15, width=50, bg="white", font=("Helvetica", 10))
+        self.texto_log.grid(row=1, column=4, padx=(20, 20), pady=5, sticky="n")
+
+        # Adicione um botão para exibir o log
+        self.btn_exibir_log = tk.Button(self.frame_detalhes_pontuacao, text="Exibir Log", command=self.exibir_log,
+                                       font=("Helvetica", 12), bg="#008CBA", fg="white")
+        self.btn_exibir_log.grid(row=2, column=4, pady=5, padx=(20, 20), sticky="e")
+
+
 
         # Configurar o grid para que os elementos possam expandir para ocupar o espaço disponível
         for i in range(4):
             self.grid_rowconfigure(i, weight=1)
             self.grid_columnconfigure(0, weight=1)
+    
 
     def limpar_feedback(self):
         # Destrói todos os widgets no frame de feedback
@@ -85,10 +89,18 @@ class InterfaceGrafica(tk.Tk):
         if caminho_arquivo:
             self.caminho_arquivo = caminho_arquivo
             self.lbl_pontuacao_total.config(text="Pontuação: N/A")
-            self.atualizar_detalhes_critérios({})  # Limpar detalhes dos critérios
+            self.atualizar_detalhes_critérios({})
+            
+            # Limpar o conteúdo do Text Widget
+            self.texto_avaliado.delete('1.0', tk.END)
 
     def iniciar_avaliacao(self):
         if hasattr(self, 'caminho_arquivo') and self.caminho_arquivo:
+            # Verifica se o arquivo tem a extensão .docx
+            if not self.caminho_arquivo.lower().endswith('.docx'):
+                messagebox.showinfo("Aviso", "Selecione um arquivo DOCX válido.")
+                return
+
             self.tempo_inicio = time.time()
 
             # Importa a classe apropriada com base no perfil
@@ -97,15 +109,61 @@ class InterfaceGrafica(tk.Tk):
             elif self.var_perfil.get() == "Artigo":
                 self.avaliador = AvaliadorArtigo(perfil="Artigo")
 
-            self.avaliar_arquivo(self.caminho_arquivo)
+            # Avalia o arquivo e obtém a tupla de retorno
+            resultado_avaliacao = self.avaliador.avaliar_texto(self.caminho_arquivo)
+
+            # Extrai as pontuações detalhadas e o texto avaliado da tupla
+            pontuacoes_detalhadas, texto_avaliado = resultado_avaliacao
+
+            # Exibe os detalhes dos critérios
+            self.atualizar_detalhes_critérios(pontuacoes_detalhadas)
+
+            # Limpa o conteúdo anterior
+            self.texto_avaliado.delete('1.0', tk.END)
+
+            # Adiciona o texto ao widget de texto
+            self.texto_avaliado.insert(tk.END, texto_avaliado)
+
+            # Chama o método contar_erros_ortografia para obter as palavras incorretas
+            self.avaliador.contar_erros_ortografia(texto_avaliado)
+
+            # Itera sobre as palavras incorretas e aplica a formatação ao texto
+            for palavra_incorreta in self.avaliador.palavras_incorretas:
+                start_index = '1.0'
+                while True:
+                    start_index = self.texto_avaliado.search(palavra_incorreta, start_index, stopindex=tk.END)
+                    if not start_index:
+                        break
+                    end_index = f'{start_index}+{len(palavra_incorreta)}c'
+                    self.texto_avaliado.tag_add('incorreta', start_index, end_index)
+                    start_index = end_index
+
+            # Aplica a formatação desejada às palavras incorretas
+            self.texto_avaliado.tag_config('incorreta', foreground='red', underline=True)
+
+            # Exibe a interface de feedback com as palavras incorretas destacadas
+            self.exibir_interface_feedback(pontuacoes_detalhadas)
+
         else:
             messagebox.showinfo("Aviso", "Selecione um arquivo antes de iniciar a avaliação.")
 
-    def avaliar_arquivo(self, caminho_arquivo):
-        pontuacoes_detalhadas = self.avaliador.avaliar_texto(caminho_arquivo)
+    def exibir_log(self):
+        try:
+            with open("log.txt", "r") as arquivo_log:
+                conteudo_log = arquivo_log.read()
+                self.texto_log.delete('1.0', tk.END)  # Limpar o conteúdo anterior
+                self.texto_log.insert(tk.END, conteudo_log)
+        except FileNotFoundError:
+            messagebox.showinfo("Aviso", "O arquivo de log não foi encontrado.")
 
-        self.tempo_fim = time.time()
-        tempo_decorrido = self.tempo_fim - self.tempo_inicio
+
+    def avaliar_arquivo(self, caminho_arquivo):
+        doc = Document(caminho_arquivo)
+        # Avalia o arquivo e obtém a tupla de retorno
+        resultado_avaliacao = self.avaliador.avaliar_texto(caminho_arquivo)
+
+        # Extrai as pontuações detalhadas e o texto avaliado da tupla
+        pontuacoes_detalhadas, texto_avaliado = resultado_avaliacao
 
         # Exibe os detalhes da pontuação total
         pontuacao_total = sum(pontuacao['pontuacao'] for pontuacao in pontuacoes_detalhadas.values())
@@ -114,16 +172,33 @@ class InterfaceGrafica(tk.Tk):
         # Exibe os detalhes dos critérios
         self.atualizar_detalhes_critérios(pontuacoes_detalhadas)
 
+        # Exibe o texto avaliado no widget de texto
+        self.texto_avaliado.delete('1.0', tk.END)  # Limpa o conteúdo anterior
+        self.texto_avaliado.insert(tk.END, texto_avaliado)
 
+        # Acessa a lista de palavras incorretas e destaca no texto avaliado
+        for palavra_incorreta in self.avaliador.palavras_incorretas:
+            self.destacar_palavra_incorreta(palavra_incorreta)
+   
+    def destacar_palavra_incorreta(self, palavra_incorreta):
+        # Encontrar todas as ocorrências da palavra incorreta no texto avaliado
+        start_index = '1.0'
+        while True:
+            start_index = self.texto_avaliado.search(palavra_incorreta, start_index, tk.END)
+            if not start_index:
+                break
+
+            end_index = f'{start_index}+{len(palavra_incorreta)}c'
+            self.texto_avaliado.tag_add('incorreta', start_index, end_index)
+            start_index = end_index
+
+        # Aplicar estilo para destacar a palavra incorreta
+        self.texto_avaliado.tag_config('incorreta', foreground='red', font=('Helvetica', 10, 'bold'))
 
     def atualizar_detalhes_critérios(self, pontuacoes_detalhadas):
         # Limpar widgets antigos no frame_critérios
         for widget in self.frame_critérios.winfo_children():
             widget.destroy()
-
-        # Limpar o texto antigo nas justificativas
-        txt_justificativas = self.frame_justificativas.winfo_children()[1]
-        txt_justificativas.delete('1.0', tk.END)
 
         # Criar widgets para cada critério
         for i, (criterio, pontuacao) in enumerate(pontuacoes_detalhadas.items(), start=1):
